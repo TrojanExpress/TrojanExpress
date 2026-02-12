@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trojan Express</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+
+<style>
+:root {
+  --green:#1e3932;
+  --light-green:#d4e9e2;
+  --cream:#f7f7f7;
+}
+body {
+  font-family:'Poppins',sans-serif;
+  margin:0;
+  background:var(--cream);
+}
+header {
+  background:var(--green);
+  color:white;
+  padding:30px;
+  text-align:center;
+}
+section {
+  padding:30px 20px;
+  max-width:1000px;
+  margin:auto;
+}
+.hero {
+  background:url("https://images.unsplash.com/photo-1509042239860-f550ce710b93") center/cover;
+  height:220px;
+  border-radius:16px;
+  margin-bottom:30px;
+}
+input,select {
+  width:100%;
+  padding:12px;
+  margin-bottom:12px;
+  border-radius:8px;
+  border:1px solid #ccc;
+}
+.menu-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(260px,1fr));
+  gap:20px;
+}
+.menu-item,.cart,.admin {
+  background:white;
+  padding:20px;
+  border-radius:16px;
+  box-shadow:0 8px 20px rgba(0,0,0,0.05);
+}
+.menu-item img {
+  width:100%;
+  height:160px;
+  object-fit:cover;
+  border-radius:12px;
+  margin-bottom:10px;
+}
+button {
+  background:var(--green);
+  color:white;
+  border:none;
+  padding:12px;
+  width:100%;
+  border-radius:8px;
+  cursor:pointer;
+  margin-top:6px;
+}
+.cart { background:var(--light-green); }
+.admin pre { white-space:pre-wrap; }
+.hidden { display:none; }
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>Trojan Express</h1>
+<p>Order ahead • Match name on RevTrak</p>
+</header>
+
+<section><div class="hero"></div></section>
+
+<section>
+<h2>Order Details</h2>
+<input id="customerName" placeholder="Your Full Name (match RevTrak)">
+<input id="room" placeholder="Classroom / Teacher">
+<select id="delivery">
+<option>Pickup</option>
+<option>Delivery to Class</option>
+</select>
+</section>
+
+<section>
+<h2>Menu</h2>
+<div class="menu-grid">
+
+<!-- COLD DRINKS -->
+<div class="menu-item">
+<img src="https://images.unsplash.com/photo-1613478223719-2ab802602423">
+<h3>Cold Drinks</h3>
+<p id="coldPrice">$1.25</p>
+<select id="coldDrink"></select>
+<select id="coldQty"></select>
+<button onclick="addCold()">Add</button>
+</div>
+
+<!-- COFFEE -->
+<div class="menu-item">
+<img src="https://images.unsplash.com/photo-1509042239860-f550ce710b93">
+<h3>Coffee</h3>
+<select id="coffeeType"></select>
+<select id="coffeeSize">
+<option value="">Size</option>
+<option value="S">Small</option>
+<option value="M">Medium</option>
+<option value="L">Large</option>
+</select>
+
+<label><input type="checkbox" id="addSyrup"> Syrup +$1.25</label><br>
+<label><input type="checkbox" id="addShot"> Espresso Shot +$1.25</label>
+
+<select id="coffeeQty"></select>
+<button onclick="addCoffee()">Add</button>
+</div>
+
+<!-- SNACKS -->
+<div class="menu-item">
+<img src="https://images.unsplash.com/photo-1621939514649-280e2ee25f60">
+<h3>Snacks</h3>
+<p id="snackPrice">$1.25</p>
+<select id="snackType"></select>
+<select id="snackQty">
+<option value="">Quantity</option>
+<option>1</option><option>2</option><option>3</option><option>4</option><option>5</option>
+<option>6</option><option>7</option><option>8</option><option>9</option><option>10</option>
+</select>
+<button onclick="addSnack()">Add</button>
+</div>
+
+</div>
+</section>
+
+<section class="cart">
+<h2>Your Order</h2>
+<ul id="cart"></ul>
+<p><strong>Total:</strong> <span id="total">$0.00</span></p>
+
+<button id="submitBtn" onclick="submitOrder()">Submit Order</button>
+
+<a href="https://cfbisd.revtrak.net/hs/smith-hs/smith-hs-stb-trojan-expess/" target="_blank">
+<button>Pay on RevTrak</button>
+</a>
+</section>
+
+<section class="admin">
+<h2>Admin – Inventory & Orders</h2>
+<input id="adminPass" placeholder="Admin Password">
+<button onclick="unlockAdmin()">Unlock Admin</button>
+
+<div id="adminPanel" class="hidden"></div>
+<pre id="ordersDisplay"></pre>
+</section>
+
+<script>
+/* ===== ADMIN PASSWORD ===== */
+const ADMIN_PASSWORD="C0ff33B34ns";
+
+/* ===== INVENTORY (PERSISTENT) ===== */
+const defaultInventory={
+cold:{price:1.25,items:{Coke:true,Sprite:true,"Dr Pepper":true,Gatorade:true,Water:true,Tea:true}},
+snack:{price:1.25,items:{Belvita:true,"Granola Bars":true,Popcorn:true,Pistachios:true,"Pop Tarts":true,"Pop Corners":true}},
+coffee:{
+Cappuccino:{S:3.25,M:4.25,L:5.25,enabled:true},
+Espresso:{S:2.25,M:3.25,L:4.25,enabled:true},
+Macchiato:{S:2.25,M:3.25,L:4.25,enabled:true},
+Mocha:{S:3.25,M:4.25,L:5.25,enabled:true}
+},
+addons:{Syrup:1.25,"Espresso Shot":1.25}
+};
+
+let inventory=JSON.parse(localStorage.getItem("inventory"))||defaultInventory;
+let cart=[],total=0;
+
+/* ===== POPULATE UI ===== */
+function populate(){
+coldDrink.innerHTML='<option value="">Select Drink</option>';
+Object.entries(inventory.cold.items).forEach(([n,on])=>{if(on) coldDrink.innerHTML+=`<option>${n}</option>`;});
+snackType.innerHTML='<option value="">Select Snack</option>';
+Object.entries(inventory.snack.items).forEach(([n,on])=>{if(on) snackType.innerHTML+=`<option>${n}</option>`;});
+coffeeType.innerHTML='<option value="">Type</option>';
+Object.entries(inventory.coffee).forEach(([n,d])=>{if(d.enabled) coffeeType.innerHTML+=`<option>${n}</option>`;});
+coldQty.innerHTML=coffeeQty.innerHTML='<option value="">Quantity</option>'+Array.from({length:10},(_,i)=>`<option>${i+1}</option>`).join("");
+coldPrice.innerText=`$${inventory.cold.price.toFixed(2)}`;
+snackPrice.innerText=`$${inventory.snack.price.toFixed(2)}`;
+}
+populate();
+
+/* ===== CART FUNCTIONS ===== */
+function addCold(){
+let d=coldDrink.value,q=+coldQty.value;
+if(!d||!q) return alert("Missing info");
+cart.push(`${q}× ${d}`);
+total+=q*inventory.cold.price;update();
+}
+function addCoffee(){
+let t=coffeeType.value,s=coffeeSize.value,q=+coffeeQty.value;
+if(!t||!s||!q) return alert("Missing info");
+let price=inventory.coffee[t][s];
+if(addSyrup.checked) price+=inventory.addons.Syrup;
+if(addShot.checked) price+=inventory.addons["Espresso Shot"];
+cart.push(`${q}× ${s} ${t}`);
+total+=q*price;update();
+}
+function addSnack(){
+let s=snackType.value,q=+snackQty.value;
+if(!s||!q) return alert("Missing info");
+cart.push(`${q}× ${s}`);
+total+=q*inventory.snack.price;update();
+}
+function update(){
+cartList.innerHTML=cart.map(i=>`<li>${i}</li>`).join("");
+totalEl.innerText=`$${total.toFixed(2)}`;
+}
+
+/* ===== ORDER STORAGE (UNCHANGED) ===== */
+function submitOrder(){
+if(!customerName.value||!cart.length) return alert("Name & items required");
+let orders=JSON.parse(localStorage.getItem("orders"))||[];
+orders.push({
+id:"TX-"+Date.now(),
+name:customerName.value,
+room:room.value||"N/A",
+delivery:delivery.value,
+items:cart.join(", "),
+total:`$${total.toFixed(2)}`
+});
+localStorage.setItem("orders",JSON.stringify(orders));
+alert("Order submitted! Pay on RevTrak using SAME NAME.");
+submitBtn.disabled=true;
+}
+
+/* ===== ADMIN PANEL ===== */
+function unlockAdmin(){
+if(adminPass.value!==ADMIN_PASSWORD) return alert("Wrong password");
+adminPanel.classList.remove("hidden");
+adminPanel.innerHTML=adminUI();
+viewOrders();
+}
+function adminUI(){
+let h=`<h3>Add New Item</h3>
+<select id="newCat"><option value="cold">Cold</option><option value="snack">Snack</option><option value="coffee">Coffee</option></select>
+<input id="newName" placeholder="Item Name">
+<input id="pS" placeholder="Price / Small">
+<input id="pM" placeholder="Medium (coffee)">
+<input id="pL" placeholder="Large (coffee)">
+<button onclick="addNewItem()">Add Item</button><hr><h3>Toggle Items</h3>`;
+Object.entries(inventory.cold.items).forEach(([n,on])=>h+=`${n}<input type="checkbox" ${on?"checked":""} onchange="inventory.cold.items['${n}']=this.checked;save()">`);
+Object.entries(inventory.snack.items).forEach(([n,on])=>h+=`${n}<input type="checkbox" ${on?"checked":""} onchange="inventory.snack.items['${n}']=this.checked;save()">`);
+Object.entries(inventory.coffee).forEach(([n,d])=>h+=`${n}<input type="checkbox" ${d.enabled?"checked":""} onchange="inventory.coffee['${n}'].enabled=this.checked;save()">`);
+return h;
+}
+function addNewItem(){
+let c=newCat.value,n=newName.value.trim();
+if(!n) return alert("Name required");
+if(c==="coffee"){
+inventory.coffee[n]={S:+pS.value,M:+pM.value,L:+pL.value,enabled:true};
+}else{
+inventory[c].items[n]=true;
+}
+save();
+}
+function save(){
+localStorage.setItem("inventory",JSON.stringify(inventory));
+populate();
+adminPanel.innerHTML=adminUI();
+}
+function viewOrders(){
+let orders=JSON.parse(localStorage.getItem("orders"))||[];
+ordersDisplay.textContent=orders.map(o=>`${o.id}\n${o.name}\n${o.items}\n${o.total}\n---`).join("\n");
+}
+
+/* ===== ELEMENTS ===== */
+const cartList=document.getElementById("cart");
+const totalEl=document.getElementById("total");
+</script>
+
+</body>
+</html>
+
